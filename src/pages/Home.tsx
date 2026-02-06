@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Calendar, Users, Sparkles, ArrowRight, CheckCircle } from 'lucide-react';
+import { Calendar, Users, Sparkles, ArrowRight, CheckCircle, QrCode, Bell, Star, CalendarPlus } from 'lucide-react';
 import { useEvents } from '../context/EventContext';
 import { EventCard } from '../components/EventCard';
 
@@ -76,7 +76,7 @@ export function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 mb-12">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-2xl">
               <div className="bg-indigo-600 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
                 <Calendar className="h-7 w-7 text-white" />
@@ -105,6 +105,41 @@ export function Home() {
               <p className="text-gray-600">
                 Get personalized event recommendations and instant answers from our AI-powered chatbot.
               </p>
+            </div>
+          </div>
+
+          {/* Additional Features */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-gray-50 p-6 rounded-xl text-center">
+              <div className="bg-green-100 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <QrCode className="h-6 w-6 text-green-600" />
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-2">QR Attendance</h4>
+              <p className="text-sm text-gray-600">Scan QR codes for instant attendance tracking</p>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-xl text-center">
+              <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Bell className="h-6 w-6 text-blue-600" />
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-2">Notifications</h4>
+              <p className="text-sm text-gray-600">Get updates on registrations and event changes</p>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-xl text-center">
+              <div className="bg-yellow-100 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Star className="h-6 w-6 text-yellow-600" />
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-2">Feedback & Ratings</h4>
+              <p className="text-sm text-gray-600">Rate events and share your experience</p>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-xl text-center">
+              <div className="bg-purple-100 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <CalendarPlus className="h-6 w-6 text-purple-600" />
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-2">Calendar Sync</h4>
+              <p className="text-sm text-gray-600">Add events to Google, Outlook, or Apple Calendar</p>
             </div>
           </div>
         </div>

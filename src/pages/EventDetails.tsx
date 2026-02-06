@@ -3,15 +3,20 @@ import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
 import { 
   Calendar, Clock, MapPin, Users, Tag, ArrowLeft, 
-  CheckCircle, XCircle, Edit, Trash2, UserCheck, AlertCircle
+  CheckCircle, XCircle, Edit, Trash2, UserCheck, AlertCircle,
+  QrCode, Star
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { QRCodeDisplay } from '../components/QRCodeDisplay';
+import { QRScanner } from '../components/QRScanner';
+import { CalendarIntegration } from '../components/CalendarIntegration';
+import { FeedbackForm, FeedbackList } from '../components/FeedbackForm';
 
 const categoryImages: Record<string, string> = {
   academic: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&h=400&fit=crop',
   cultural: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&h=400&fit=crop',
-  sports: 'https://images.unsplash.com/photo-1461896836934-gy90sjv2cvo?w=800&h=400&fit=crop',
+  sports: 'https://images.unsplash.com/photo-1461896836934-fffb4837ed67?w=800&h=400&fit=crop',
   technical: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&h=400&fit=crop',
   workshop: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=400&fit=crop',
   seminar: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop',
@@ -21,10 +26,17 @@ const categoryImages: Record<string, string> = {
 export function EventDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getEventById, registerForEvent, unregisterFromEvent, isUserRegistered, getEventRegistrations, deleteEvent, markAttendance } = useEvents();
+  const { 
+    getEventById, registerForEvent, unregisterFromEvent, isUserRegistered, 
+    getEventRegistrations, deleteEvent, markAttendance, markAttendanceByQR,
+    getUserRegistrations, getEventAverageRating, getEventFeedbacks
+  } = useEvents();
   const { user, isAuthenticated } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [scanResult, setScanResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details');
 
   const event = getEventById(id || '');
   
@@ -43,9 +55,14 @@ export function EventDetails() {
 
   const registrations = getEventRegistrations(event.id);
   const isRegistered = user ? isUserRegistered(event.id, user.id) : false;
-  const isOrganizer = user?.id === event.organizerId || user?.role === 'organizer';
+  const isOrganizer = user?.id === event.organizerId;
   const spotsLeft = event.capacity - registrations.length;
   const isFull = spotsLeft <= 0;
+  const userRegistration = user ? getUserRegistrations(user.id).find(r => r.eventId === event.id) : null;
+  const averageRating = getEventAverageRating(event.id);
+  const feedbackCount = getEventFeedbacks(event.id).length;
+  const hasAttended = userRegistration?.attended || false;
+  const canLeaveFeedback = hasAttended || event.status === 'completed';
 
   const handleRegister = () => {
     if (!user) {
@@ -55,11 +72,11 @@ export function EventDetails() {
 
     const success = registerForEvent(event.id, user.id, user.name, user.email);
     if (success) {
-      setRegistrationMessage({ type: 'success', text: 'Successfully registered for this event!' });
+      setRegistrationMessage({ type: 'success', text: 'Successfully registered for this event! Check your QR code below.' });
     } else {
       setRegistrationMessage({ type: 'error', text: 'Failed to register. Event may be full.' });
     }
-    setTimeout(() => setRegistrationMessage(null), 3000);
+    setTimeout(() => setRegistrationMessage(null), 5000);
   };
 
   const handleUnregister = () => {
@@ -73,6 +90,16 @@ export function EventDetails() {
   const handleDelete = () => {
     deleteEvent(event.id);
     navigate('/events');
+  };
+
+  const handleQRScan = (qrCode: string) => {
+    const result = markAttendanceByQR(qrCode);
+    setScanResult({ 
+      type: result.success ? 'success' : 'error', 
+      text: result.message 
+    });
+    setShowQRScanner(false);
+    setTimeout(() => setScanResult(null), 5000);
   };
 
   return (
@@ -98,7 +125,7 @@ export function EventDetails() {
         </button>
 
         <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-8">
-          <div className="flex gap-2 mb-3">
+          <div className="flex gap-2 mb-3 flex-wrap">
             <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-600 text-white">
               {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
             </span>
@@ -110,13 +137,19 @@ export function EventDetails() {
             }`}>
               {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
             </span>
+            {averageRating > 0 && (
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500 text-white flex items-center gap-1">
+                <Star className="h-3 w-3 fill-white" />
+                {averageRating.toFixed(1)} ({feedbackCount})
+              </span>
+            )}
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white">{event.title}</h1>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Registration Message */}
+        {/* Messages */}
         {registrationMessage && (
           <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
             registrationMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
@@ -126,16 +159,72 @@ export function EventDetails() {
           </div>
         )}
 
+        {scanResult && (
+          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+            scanResult.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {scanResult.type === 'success' ? <CheckCircle className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+            {scanResult.text}
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-2xl shadow-md p-6 md:p-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">About This Event</h2>
-              <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{event.description}</p>
+            {/* Tabs */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="flex border-b">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`flex-1 px-6 py-4 text-sm font-medium transition ${
+                    activeTab === 'details' 
+                      ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Event Details
+                </button>
+                <button
+                  onClick={() => setActiveTab('feedback')}
+                  className={`flex-1 px-6 py-4 text-sm font-medium transition ${
+                    activeTab === 'feedback' 
+                      ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Reviews ({feedbackCount})
+                </button>
+              </div>
+
+              <div className="p-6 md:p-8">
+                {activeTab === 'details' ? (
+                  <>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">About This Event</h2>
+                    <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{event.description}</p>
+                  </>
+                ) : (
+                  <div className="space-y-6">
+                    {isAuthenticated && canLeaveFeedback && (
+                      <FeedbackForm eventId={event.id} />
+                    )}
+                    {!canLeaveFeedback && isRegistered && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-gray-600">
+                        <p>You can leave a review after attending the event.</p>
+                      </div>
+                    )}
+                    <FeedbackList eventId={event.id} />
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* User's QR Code (if registered) */}
+            {isAuthenticated && isRegistered && userRegistration && (
+              <QRCodeDisplay registration={userRegistration} event={event} />
+            )}
+
             {/* Organizer Actions */}
-            {isOrganizer && user?.id === event.organizerId && (
+            {isOrganizer && (
               <div className="bg-white rounded-2xl shadow-md p-6 md:p-8">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Organizer Actions</h2>
                 <div className="flex flex-wrap gap-3">
@@ -146,6 +235,13 @@ export function EventDetails() {
                     <Edit className="h-4 w-4" />
                     Edit Event
                   </Link>
+                  <button
+                    onClick={() => setShowQRScanner(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  >
+                    <QrCode className="h-4 w-4" />
+                    Scan Attendance
+                  </button>
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
@@ -178,12 +274,12 @@ export function EventDetails() {
             )}
 
             {/* Participants List (for organizer) */}
-            {isOrganizer && user?.id === event.organizerId && registrations.length > 0 && (
+            {isOrganizer && registrations.length > 0 && (
               <div className="bg-white rounded-2xl shadow-md p-6 md:p-8">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   Registered Participants ({registrations.length})
                 </h2>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-96 overflow-y-auto">
                   {registrations.map(reg => (
                     <div key={reg.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
@@ -225,7 +321,10 @@ export function EventDetails() {
                   <Clock className="h-5 w-5 text-indigo-600 mt-0.5" />
                   <div>
                     <p className="font-medium text-gray-900">Time</p>
-                    <p className="text-gray-600">{event.time}</p>
+                    <p className="text-gray-600">
+                      {event.time}
+                      {event.endTime && ` - ${event.endTime}`}
+                    </p>
                   </div>
                 </div>
                 
@@ -274,13 +373,15 @@ export function EventDetails() {
                       <CheckCircle className="h-5 w-5" />
                       <span className="font-medium">You're registered!</span>
                     </div>
-                    <button
-                      onClick={handleUnregister}
-                      className="w-full flex items-center justify-center gap-2 bg-red-100 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-200 transition"
-                    >
-                      <XCircle className="h-5 w-5" />
-                      Cancel Registration
-                    </button>
+                    {event.status === 'upcoming' && (
+                      <button
+                        onClick={handleUnregister}
+                        className="w-full flex items-center justify-center gap-2 bg-red-100 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-200 transition"
+                      >
+                        <XCircle className="h-5 w-5" />
+                        Cancel Registration
+                      </button>
+                    )}
                   </div>
                 ) : isFull ? (
                   <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-xl">
@@ -303,9 +404,22 @@ export function EventDetails() {
                 )}
               </div>
             </div>
+
+            {/* Calendar Integration */}
+            {(event.status === 'upcoming' || event.status === 'ongoing') && (
+              <CalendarIntegration event={event} />
+            )}
           </div>
         </div>
       </div>
+
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <QRScanner
+          onScan={handleQRScan}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
     </div>
   );
 }

@@ -3,13 +3,21 @@ import { useAuth } from '../context/AuthContext';
 import { useEvents } from '../context/EventContext';
 import { 
   Calendar, Users, PlusCircle, Clock, MapPin, 
-  CheckCircle, ArrowRight, BarChart3, CalendarCheck
+  CheckCircle, ArrowRight, BarChart3, CalendarCheck,
+  Bell, Star, QrCode, MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useState } from 'react';
+import { QRScanner } from '../components/QRScanner';
 
 export function Dashboard() {
   const { user } = useAuth();
-  const { events, getUserRegistrations, getEventRegistrations } = useEvents();
+  const { 
+    events, getUserRegistrations, getEventRegistrations, 
+    getUserNotifications, getEventAverageRating, markAttendanceByQR 
+  } = useEvents();
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [scanResult, setScanResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const isOrganizer = user?.role === 'organizer';
   
@@ -23,11 +31,28 @@ export function Dashboard() {
     return { registration: reg, event };
   }).filter(item => item.event);
 
+  // Notifications
+  const notifications = user ? getUserNotifications(user.id) : [];
+  const unreadNotifications = notifications.filter(n => !n.read);
+
   // Stats
   const upcomingOrganizedEvents = myOrganizedEvents.filter(e => e.status === 'upcoming').length;
   const totalRegistrationsForMyEvents = myOrganizedEvents.reduce((acc, event) => {
     return acc + getEventRegistrations(event.id).length;
   }, 0);
+  const totalAttendedForMyEvents = myOrganizedEvents.reduce((acc, event) => {
+    return acc + getEventRegistrations(event.id).filter(r => r.attended).length;
+  }, 0);
+
+  const handleQRScan = (qrCode: string) => {
+    const result = markAttendanceByQR(qrCode);
+    setScanResult({ 
+      type: result.success ? 'success' : 'error', 
+      text: result.message 
+    });
+    setShowQRScanner(false);
+    setTimeout(() => setScanResult(null), 5000);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -40,15 +65,33 @@ export function Dashboard() {
               ? "Manage your events and track registrations from your dashboard."
               : "View your registered events and discover new opportunities."}
           </p>
-          <div className="mt-4 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm">
-            <Users className="h-4 w-4" />
-            <span className="capitalize">{user?.role}</span>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm">
+              <Users className="h-4 w-4" />
+              <span className="capitalize">{user?.role}</span>
+            </span>
+            {unreadNotifications.length > 0 && (
+              <span className="inline-flex items-center gap-2 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-medium">
+                <Bell className="h-4 w-4" />
+                {unreadNotifications.length} new notification{unreadNotifications.length > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
 
+        {/* Scan Result */}
+        {scanResult && (
+          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+            scanResult.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {scanResult.type === 'success' ? <CheckCircle className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+            {scanResult.text}
+          </div>
+        )}
+
         {/* Stats Cards */}
         {isOrganizer ? (
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="grid md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -84,9 +127,21 @@ export function Dashboard() {
                 </div>
               </div>
             </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Attendees</p>
+                  <p className="text-3xl font-bold text-gray-900">{totalAttendedForMyEvents}</p>
+                </div>
+                <div className="bg-orange-100 p-3 rounded-xl">
+                  <Users className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -102,11 +157,25 @@ export function Dashboard() {
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="text-sm text-gray-500">Events Attended</p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {registeredEvents.filter(r => r.registration.attended).length}
+                  </p>
+                </div>
+                <div className="bg-green-100 p-3 rounded-xl">
+                  <CalendarCheck className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-sm text-gray-500">Available Events</p>
                   <p className="text-3xl font-bold text-gray-900">{events.filter(e => e.status === 'upcoming').length}</p>
                 </div>
-                <div className="bg-green-100 p-3 rounded-xl">
-                  <Calendar className="h-6 w-6 text-green-600" />
+                <div className="bg-purple-100 p-3 rounded-xl">
+                  <Calendar className="h-6 w-6 text-purple-600" />
                 </div>
               </div>
             </div>
@@ -114,23 +183,41 @@ export function Dashboard() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {isOrganizer && (
-            <Link
-              to="/create-event"
-              className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition flex items-center gap-4 group"
-            >
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-4 rounded-xl">
-                <PlusCircle className="h-8 w-8 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition">
-                  Create New Event
-                </h3>
-                <p className="text-sm text-gray-500">Start organizing your next campus event</p>
-              </div>
-              <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition" />
-            </Link>
+            <>
+              <Link
+                to="/create-event"
+                className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition flex items-center gap-4 group"
+              >
+                <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-4 rounded-xl">
+                  <PlusCircle className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition">
+                    Create New Event
+                  </h3>
+                  <p className="text-sm text-gray-500">Start organizing your next campus event</p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition" />
+              </Link>
+
+              <button
+                onClick={() => setShowQRScanner(true)}
+                className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition flex items-center gap-4 group text-left w-full"
+              >
+                <div className="bg-gradient-to-br from-green-600 to-teal-600 p-4 rounded-xl">
+                  <QrCode className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-green-600 transition">
+                    Scan Attendance
+                  </h3>
+                  <p className="text-sm text-gray-500">Scan QR codes to mark attendance</p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-green-600 transition" />
+              </button>
+            </>
           )}
           
           <Link
@@ -163,6 +250,8 @@ export function Dashboard() {
               <div className="divide-y">
                 {myOrganizedEvents.map(event => {
                   const regCount = getEventRegistrations(event.id).length;
+                  const attendedCount = getEventRegistrations(event.id).filter(r => r.attended).length;
+                  const avgRating = getEventAverageRating(event.id);
                   return (
                     <Link
                       key={event.id}
@@ -170,7 +259,7 @@ export function Dashboard() {
                       className="p-6 flex items-center gap-4 hover:bg-gray-50 transition"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-medium text-gray-900 truncate">{event.title}</h3>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                             event.status === 'upcoming' ? 'bg-green-100 text-green-700' :
@@ -180,6 +269,12 @@ export function Dashboard() {
                           }`}>
                             {event.status}
                           </span>
+                          {avgRating > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-yellow-600">
+                              <Star className="h-3 w-3 fill-yellow-400" />
+                              {avgRating.toFixed(1)}
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
@@ -193,6 +288,10 @@ export function Dashboard() {
                           <span className="flex items-center gap-1">
                             <Users className="h-4 w-4" />
                             {regCount} / {event.capacity}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <CheckCircle className="h-4 w-4" />
+                            {attendedCount} attended
                           </span>
                         </div>
                       </div>
@@ -233,7 +332,7 @@ export function Dashboard() {
                     className="p-6 flex items-center gap-4 hover:bg-gray-50 transition"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-medium text-gray-900 truncate">{event!.title}</h3>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           event!.status === 'upcoming' ? 'bg-green-100 text-green-700' :
@@ -244,7 +343,8 @@ export function Dashboard() {
                           {event!.status}
                         </span>
                         {registration.attended && (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
                             Attended
                           </span>
                         )}
@@ -258,10 +358,17 @@ export function Dashboard() {
                           <MapPin className="h-4 w-4" />
                           {event!.venue}
                         </span>
+                        {(registration.attended || event!.status === 'completed') && (
+                          <span className="flex items-center gap-1 text-purple-600">
+                            <MessageSquare className="h-4 w-4" />
+                            Leave a review
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    <div className="flex items-center gap-2">
+                      <QrCode className="h-5 w-5 text-gray-400" />
+                      <ArrowRight className="h-5 w-5 text-gray-400" />
                     </div>
                   </Link>
                 ))}
@@ -283,6 +390,14 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <QRScanner
+          onScan={handleQRScan}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
     </div>
   );
 }

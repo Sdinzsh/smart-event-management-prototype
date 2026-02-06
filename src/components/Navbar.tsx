@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Calendar, Menu, X, User, LogOut, PlusCircle, LayoutDashboard } from 'lucide-react';
 import { useState } from 'react';
+import { NotificationCenter } from './NotificationCenter';
 
 export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -47,7 +48,11 @@ export function Navbar() {
                     Create Event
                   </Link>
                 )}
-                <div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/20">
+                
+                {/* Notification Center */}
+                <NotificationCenter />
+                
+                <div className="flex items-center gap-3 ml-2 pl-4 border-l border-white/20">
                   <div className="flex items-center gap-2 text-white">
                     <User className="h-5 w-5" />
                     <span className="text-sm">{user?.name}</span>
@@ -81,7 +86,8 @@ export function Navbar() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-2">
+            {isAuthenticated && <NotificationCenter />}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="text-white p-2"

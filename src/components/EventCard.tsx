@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Event } from '../types';
-import { Calendar, Clock, MapPin, Users, Tag } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Tag, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { useEvents } from '../context/EventContext';
 
@@ -29,7 +29,7 @@ const statusColors: Record<string, string> = {
 const categoryImages: Record<string, string> = {
   academic: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&h=250&fit=crop',
   cultural: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=250&fit=crop',
-  sports: 'https://images.unsplash.com/photo-1461896836934- voices-of-ai-coaches?w=400&h=250&fit=crop',
+  sports: 'https://images.unsplash.com/photo-1461896836934-fffb4837ed67?w=400&h=250&fit=crop',
   technical: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&h=250&fit=crop',
   workshop: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop',
   seminar: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=400&h=250&fit=crop',
@@ -37,9 +37,11 @@ const categoryImages: Record<string, string> = {
 };
 
 export function EventCard({ event }: EventCardProps) {
-  const { getEventRegistrations } = useEvents();
+  const { getEventRegistrations, getEventAverageRating, getEventFeedbacks } = useEvents();
   const registrationCount = getEventRegistrations(event.id).length;
   const spotsLeft = event.capacity - registrationCount;
+  const averageRating = getEventAverageRating(event.id);
+  const feedbackCount = getEventFeedbacks(event.id).length;
 
   return (
     <Link to={`/events/${event.id}`} className="block group">
@@ -53,7 +55,7 @@ export function EventCard({ event }: EventCardProps) {
               (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=400&h=250&fit=crop';
             }}
           />
-          <div className="absolute top-3 left-3 flex gap-2">
+          <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
             <span className={`px-3 py-1 rounded-full text-xs font-medium ${categoryColors[event.category]}`}>
               {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
             </span>
@@ -61,6 +63,13 @@ export function EventCard({ event }: EventCardProps) {
               {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
             </span>
           </div>
+          {averageRating > 0 && (
+            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              <span className="text-xs font-medium text-gray-700">{averageRating.toFixed(1)}</span>
+              <span className="text-xs text-gray-500">({feedbackCount})</span>
+            </div>
+          )}
         </div>
         
         <div className="p-5">
@@ -79,7 +88,7 @@ export function EventCard({ event }: EventCardProps) {
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-indigo-500" />
-              <span>{event.time}</span>
+              <span>{event.time}{event.endTime && ` - ${event.endTime}`}</span>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-indigo-500" />

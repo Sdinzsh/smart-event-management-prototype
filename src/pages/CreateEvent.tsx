@@ -27,6 +27,7 @@ export function CreateEvent() {
     description: '',
     date: '',
     time: '',
+    endTime: '',
     venue: '',
     category: 'other' as 'academic' | 'cultural' | 'sports' | 'technical' | 'workshop' | 'seminar' | 'other',
     capacity: 50,
@@ -71,12 +72,14 @@ export function CreateEvent() {
         description: formData.description,
         date: formData.date,
         time: formData.time,
+        endTime: formData.endTime || undefined,
         venue: formData.venue,
         category: formData.category,
         capacity: formData.capacity,
         image: formData.image || undefined,
         organizerId: user.id,
         organizerName: user.name,
+        organizerEmail: user.email,
         status: 'upcoming'
       });
       
@@ -150,7 +153,7 @@ export function CreateEvent() {
             </div>
 
             {/* Date and Time */}
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <Calendar className="h-4 w-4" />
@@ -170,7 +173,7 @@ export function CreateEvent() {
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <Clock className="h-4 w-4" />
-                  Time
+                  Start Time
                 </label>
                 <input
                   type="time"
@@ -181,6 +184,19 @@ export function CreateEvent() {
                   }`}
                 />
                 {errors.time && <p className="mt-1 text-sm text-red-500">{errors.time}</p>}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="h-4 w-4" />
+                  End Time (Optional)
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => handleChange('endTime', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                />
               </div>
             </div>
 
