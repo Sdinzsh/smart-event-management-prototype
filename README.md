@@ -1,5 +1,3 @@
-# smart-event-management-prototype
-Smart Campus Event Management Colleges conduct multiple academic and non-academic events throughout the year.
 # Smart Campus Event Management Prototype
 
 A modern web application for managing academic and non-academic events in college campuses, streamlining event organization, registration, and coordination.
