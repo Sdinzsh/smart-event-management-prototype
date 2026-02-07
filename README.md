@@ -90,15 +90,6 @@ smart-event-management-prototype/
 4. Receive confirmation and reminders
 5. Check event updates in your dashboard
 
-## 🔧 Configuration
-
-The application can be configured through environment variables. Create a `.env` file in the root directory:
-
-```env
-VITE_API_URL=your_api_endpoint
-VITE_APP_TITLE=Smart Campus Events
-```
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow these steps:
